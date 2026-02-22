@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Putigma V2 (Fixed)</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:#f0f0f0;font-family:system-ui,Segoe UI,Roboto,Arial}
+    :root{--bg:#fff;--panel:#eaeaeb;--border:#7c7c7c;--text:#000}
+    /* Fixed full-screen container (not draggable) */
+    .app{position:fixed;inset:0;display:flex;gap:8px;padding:8px;background:var(--panel);user-select:text}
+    .editor{flex:1;display:flex;flex-direction:column;min-width:0}
+    textarea#script{flex:1;padding:8px;border:1px solid var(--border);background:#fff;color:var(--text);font-family:monospace;font-size:13px;resize:vertical;min-height:0;overflow:auto}
+    .controls{display:flex;gap:8px;margin-top:8px}
+    .btn{height:36px;padding:0 12px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:14px}
+    .list{width:180px;max-width:320px;display:flex;flex-direction:column}
+    .buttons{flex:1;overflow:auto;background:#fff;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px;padding:6px}
+    .buttons button{height:28px;border:1px solid #c8c8c8;background:#f0f0f0;font-size:12px;text-align:left;padding-left:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .output{margin-top:8px;border:1px solid var(--border);background:#fff;padding:8px;font-family:monospace;font-size:13px;min-height:56px;overflow:auto}
+    @media (max-width:700px){
+      .app{flex-direction:column;padding:6px}
+      .list{width:100%;order:2}
+      .buttons{flex-direction:row;flex-wrap:wrap;gap:6px}
+      .buttons button{width:48%;height:auto;padding:6px;white-space:normal}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="editor">
+      <textarea id="script" spellcheck="false" placeholder="-- Put scripts here"></textarea>
+
+      <div class="controls">
+        <button class="btn" id="execute">Execute</button>
+        <button class="btn" id="clear">Clear</button>
+        <button class="btn" id="copy">Copy</button>
+        <button class="btn" id="inject">Inject</button>
+      </div>
+
+      <div class="output" id="output">Ready...</div>
+    </div>
+
+    <div class="list" id="list">
+      <div class="buttons" id="scriptList" aria-label="Scripts list"></div>
+    </div>
+  </div>
+
+<script>
+  // Elements
+  const scriptArea = document.getElementById('script');
+  const executeBtn = document.getElementById('execute');
+  const clearBtn = document.getElementById('clear');
+  const copyBtn = document.getElementById('copy');
+  const injectBtn = document.getElementById('inject');
+  const scriptList = document.getElementById('scriptList');
+  const output = document.getElementById('output');
+  const app = document.getElementById('app');
+
+  // Data (same as original)
+  const buttonsData = [
+    {Title:"Infinite Yield",URL:"https://rawscripts.net/raw/Universal-Script-Infinite-yield-Game-commands-etc-14971"},
+    {Title:"Dex Explorer",URL:"https://rawscripts.net/raw/Universal-Script-Dark-Dex-Explorer-19291"},
+    {Title:"1x1x1x1 Skid",URL:"https://rawscripts.net/raw/Natural-Disaster-Survival-1X1X1X1-GUI-PLS-LIKE-11504"},
+    {Title:"1x1x1x1 Blue",URL:"https://rawscripts.net/raw/Universal-Script-1x1x1x1-blue-gui-21876"},
+    {Title:"c00lgui",URL:"https://raw.githubusercontent.com/MiRw3b/c00lgui-v3rx/main/c00lguiv3rx.lua"},
+    {Title:"Ligma",URL:"https://pastebin.com/raw/MUfsexG1"},
+    {Title:"Project Stigma",URL:"https://rawscripts.net/raw/Universal-Script-Project-stigma-by-my-friend-jointeamck-9367"},
+    {Title:"RC7",URL:"https://pastebin.com/raw/b787QKMQ"},
+    {Title:"Ro Xploit",URL:"https://pastebin.com/raw/0hryQeGw"},
+    {Title:"Trowhack backdoor",URL:"https://raw.githubusercontent.com/TrowHack/scripts/refs/heads/roblox/backdoor.lua"},
+    {Title:"Punpun backdoor",URL:"https://pastefy.app/5I28X4ds/raw"},
+    {Title:"Moon backdoor",URL:"https://raw.githubusercontent.com/G4mg1/main/refs/heads/main/README.md"},
+    {Title:"SF Mobile",URL:"https://raw.githubusercontent.com/g00byd0lanxdd/SF-1.5-MOBILE/refs/heads/main/SF%201.5%20MOBILE"},
+    {Title:"BiPolaria",URL:"https://pastebin.com/raw/8qFWEtWY"},
+    {Title:"Luau X SS v5",URL:"https://rawscripts.net/raw/Universal-Script-Luau-X-SS-V5-rework-50365"},
+    {Title:"SSP",URL:"https://pastefy.app/XHqVeb0d/raw"},
+    {Title:"ExSer",URL:"https://pastefy.app/7sO8ckTL/raw"},
+    {Title:"Project Primalia",URL:"https://rawscripts.net/raw/Universal-Script-Project-Primalia-SS-63706"},
+    {Title:"Venguim",URL:"https://pastefy.app/j3yyullx/raw"},
+    {Title:"KlausGui",URL:"https://pastebin.com/raw/Y0CYLJ6z"},
+    {Title:"Ro Xploit Tiny",URL:"https://raw.githubusercontent.com/Kroostal/Ro-Xploittinyhub/refs/heads/main/RoXploit%20TinyHub"},
+    {Title:"Polaria",URL:"https://pastefy.app/agqEB2qs/raw"},
+    {Title:"Luau X SS v3",URL:"https://raw.githubusercontent.com/gojohdkaisenkt2/Gojohdkaisenkt-/refs/heads/main/L"},
+    {Title:"Broken Spawn",URL:"https://pastebin.com/raw/NyJfL0ey"},
+  ];
+
+  let lastSelectedUrl = null;
+  function loaderString(url){ return `loadstring(game:HttpGet("${url}"))()`; }
+
+  // Helper: set output text
+  function setOutput(text){
+    output.textContent = text;
+  }
+
+  // Populate list: try fetch, fallback to loader
+  function buildList(){
+    scriptList.innerHTML = '';
+    buttonsData.forEach(item=>{
+      const btn = document.createElement('button');
+      btn.textContent = item.Title;
+      btn.title = item.URL;
+      btn.addEventListener('click', async () => {
+        lastSelectedUrl = item.URL;
+        setOutput('Fetching: ' + item.Title);
+        try {
+          const resp = await fetch(item.URL, { cache: 'no-store' });
+          if(!resp.ok) throw new Error('HTTP ' + resp.status);
+          const text = await resp.text();
+          scriptArea.value = text;
+          scriptArea.scrollTop = 0;
+          setOutput(`Fetched ${item.Title} (${text.length} bytes) — placed into editor.`);
+        } catch (e) {
+          scriptArea.value = loaderString(item.URL);
+          scriptArea.scrollTop = 0;
+          setOutput('Fetch failed — loader inserted.');
+        }
+      });
+      scriptList.appendChild(btn);
+    });
+  }
+  buildList();
+
+  // Drag & drop file load (loads file content into editor)
+  app.addEventListener('dragover', e => { e.preventDefault(); });
+  app.addEventListener('drop', e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(!f){ setOutput('No file dropped.'); return; }
+    const r = new FileReader();
+    r.onload = ()=> {
+      scriptArea.value = String(r.result || '');
+      scriptArea.scrollTop = 0;
+      lastSelectedUrl = null;
+      setOutput(`Loaded file: ${f.name}`);
+    };
+    r.onerror = ()=> { setOutput('File read error.'); };
+    r.readAsText(f);
+  });
+
+  // Buttons
+  clearBtn.addEventListener('click', ()=> {
+    scriptArea.value = '';
+    lastSelectedUrl = null;
+    setOutput('Cleared.');
+  });
+
+  copyBtn.addEventListener('click', async ()=> {
+    try {
+      await navigator.clipboard.writeText(scriptArea.value || '');
+      setOutput('Copied.');
+    } catch (e) {
+      setOutput('Copy failed.');
+    }
+  });
+
+  // Inject: show "กำลัง inject" then back to Ready...
+  injectBtn.addEventListener('click', ()=> {
+    setOutput('กำลัง inject');
+    setTimeout(()=> setOutput('Ready...'), 1500);
+  });
+
+  // Execute evaluates as JS in browser (kept for parity)
+  executeBtn.addEventListener('click', ()=> {
+    const code = scriptArea.value;
+    setOutput('Executing...');
+    try {
+      const result = (function(){ return eval(code); })();
+      setOutput('Success: ' + (typeof result === 'undefined' ? '(no result)' : String(result)));
+    } catch (err) {
+      setOutput('Error: ' + err);
+    }
+  });
+
+  // Ensure full viewport on mobile
+  function fixHeight(){ document.documentElement.style.height = window.innerHeight + 'px'; document.body.style.height = window.innerHeight + 'px'; }
+  window.addEventListener('resize', fixHeight); fixHeight();
+</script>
+</body>
+</html>
