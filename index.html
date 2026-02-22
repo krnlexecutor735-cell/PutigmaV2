@@ -3,178 +3,323 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>PutigmaV2</title>
+  <title>Putigma V2 (Fullscreen)</title>
   <style>
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:#f0f0f0;font-family:system-ui,Segoe UI,Roboto,Arial}
-    :root{--bg:#fff;--panel:#eaeaeb;--border:#7c7c7c;--text:#000}
-    /* Fixed full-screen container (not draggable) */
-    .app{position:fixed;inset:0;display:flex;gap:8px;padding:8px;background:var(--panel);user-select:text}
-    .editor{flex:1;display:flex;flex-direction:column;min-width:0}
-    textarea#script{flex:1;padding:8px;border:1px solid var(--border);background:#fff;color:var(--text);font-family:monospace;font-size:13px;resize:vertical;min-height:0;overflow:auto}
-    .controls{display:flex;gap:8px;margin-top:8px}
-    .btn{height:36px;padding:0 12px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:14px}
-    .list{width:180px;max-width:320px;display:flex;flex-direction:column}
-    .buttons{flex:1;overflow:auto;background:#fff;border:1px solid var(--border);display:flex;flex-direction:column;gap:6px;padding:6px}
-    .buttons button{height:28px;border:1px solid #c8c8c8;background:#f0f0f0;font-size:12px;text-align:left;padding-left:8px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .output{margin-top:8px;border:1px solid var(--border);background:#fff;padding:8px;font-family:monospace;font-size:13px;min-height:56px;overflow:auto}
+    /* Simple, rectangular UI that fills the screen.
+       Editor and script list expand and scroll when content is large. */
+    * { box-sizing: border-box; }
+    html,body { height:100%; margin:0; background:#f0f0f0; font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+    :root{
+      --bg:#ffffff;
+      --panel:#eaeaeb;
+      --border:#7c7c7c;
+      --muted:#c6c6c6;
+      --text:#000000;
+    }
+
+    /* Fullscreen container (no top titlebar) */
+    .putigma-full {
+      position:fixed;
+      left:0; top:0; right:0; bottom:0;
+      display:flex;
+      flex-direction:column;
+      background:var(--bg);
+      border:0;
+    }
+
+    /* Tabs row (Executor / View) only */
+    .tabs-row {
+      height:28px;
+      background:var(--bg);
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:4px 8px;
+    }
+    .tab {
+      height:20px;
+      padding:0 8px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      color:var(--text);
+      font-size:13px;
+      line-height:18px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      user-select:none;
+    }
+    .tab.active { background:#dadada; }
+
+    /* Main area */
+    .main-area {
+      flex:1;
+      display:flex;
+      gap:10px;
+      padding:10px;
+      background:var(--panel);
+      min-height:0; /* important for proper flexbox scrolling on children */
+    }
+
+    /* Left: editor + controls */
+    .left {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      flex:1;
+      min-width:0; /* important so textarea can shrink and scroll properly */
+    }
+
+    /* The editor should expand to fill available vertical space and scroll when content is long */
+    textarea#script {
+      width:100%;
+      flex:1;            /* expand to fill available height */
+      min-height:0;      /* allow flex to control height */
+      resize:vertical;
+      padding:8px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      color:var(--text);
+      font-family: monospace;
+      font-size:13px;
+      line-height:1.2;
+      overflow:auto;
+      outline:none;
+    }
+
+    .controls-row {
+      display:flex;
+      gap:8px;
+      align-items:flex-start;
+      min-height:0;
+    }
+
+    .vstack {
+      width:110px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .btn {
+      height:30px;
+      border:1px solid var(--border);
+      background:#ffffff;
+      cursor:pointer;
+      font-size:14px;
+      color:var(--text);
+      user-select:none;
+    }
+
+    .output {
+      flex:1;
+      min-height:80px;
+      min-width:0;
+      border:1px solid var(--border);
+      padding:8px;
+      background:#ffffff;
+      font-family:monospace;
+      font-size:13px;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+
+    /* Right: script list */
+    .right {
+      width:115px;
+      max-width:220px;
+      display:flex;
+      flex-direction:column;
+      min-width:110px;
+      min-height:0;
+    }
+    .script-list {
+      flex:1;
+      overflow:auto;   /* scroll when many entries */
+      background:#ffffff;
+      border:1px solid var(--border);
+      padding:6px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-height:0;
+    }
+    .script-list button {
+      width:100%;
+      height:23px;
+      border:1px solid #c8c8c8;
+      background:#f0f0f0;
+      font-size:12px;
+      cursor:pointer;
+      text-align:left;
+      padding-left:6px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .script-list button:hover { background:#e6e6e6; }
+
+    input[type="file"] { display:none; }
+
+    /* Responsive: stack on small screens */
     @media (max-width:700px){
-      .app{flex-direction:column;padding:6px}
-      .list{width:100%;order:2}
-      .buttons{flex-direction:row;flex-wrap:wrap;gap:6px}
-      .buttons button{width:48%;height:auto;padding:6px;white-space:normal}
+      .main-area { flex-direction:column; padding:8px; }
+      .right { width:100%; order:2; max-height:220px; }
+      .script-list { flex-direction:row; flex-wrap:wrap; gap:6px; max-height:180px; overflow:auto; }
+      .script-list button { width:48%; white-space:normal; height:auto; padding:6px; }
     }
   </style>
 </head>
 <body>
-  <div class="app" id="app">
-    <div class="editor">
-      <textarea id="script" spellcheck="false" placeholder="-- Put scripts here"></textarea>
-
-      <div class="controls">
-        <button class="btn" id="execute">Execute</button>
-        <button class="btn" id="clear">Clear</button>
-        <button class="btn" id="copy">Copy</button>
-        <button class="btn" id="inject">Inject</button>
-      </div>
-
-      <div class="output" id="output">Ready...</div>
+  <div class="putigma-full" id="putigma">
+    <div class="tabs-row">
+      <button class="tab active" id="tab-exec">Executor</button>
+      <button class="tab" id="tab-view">View</button>
+      <div style="flex:1"></div>
     </div>
 
-    <div class="list" id="list">
-      <div class="buttons" id="scriptList" aria-label="Scripts list"></div>
+    <div class="main-area">
+      <div class="left">
+        <textarea id="script">-- Put scripts here</textarea>
+
+        <div class="controls-row">
+          <div class="vstack">
+            <button class="btn" id="execute">Execute</button>
+            <button class="btn" id="clear">Clear</button>
+            <button class="btn" id="file">File</button>
+            <input type="file" id="fileInput" accept=".txt,.lua,.js,.md,.json" />
+          </div>
+          <div class="output" id="output">Ready...</div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="script-list" id="scriptList" aria-label="Scripts list">
+          <!-- populated by JS -->
+        </div>
+      </div>
     </div>
   </div>
 
-<script>
-  // Elements
-  const scriptArea = document.getElementById('script');
-  const executeBtn = document.getElementById('execute');
-  const clearBtn = document.getElementById('clear');
-  const copyBtn = document.getElementById('copy');
-  const injectBtn = document.getElementById('inject');
-  const scriptList = document.getElementById('scriptList');
-  const output = document.getElementById('output');
-  const app = document.getElementById('app');
+  <script>
+    // Elements
+    const executeBtn = document.getElementById('execute');
+    const clearBtn = document.getElementById('clear');
+    const fileBtn = document.getElementById('file');
+    const fileInput = document.getElementById('fileInput');
+    const scriptArea = document.getElementById('script');
+    const output = document.getElementById('output');
+    const scriptList = document.getElementById('scriptList');
+    const tabExec = document.getElementById('tab-exec');
+    const tabView = document.getElementById('tab-view');
 
-  // Data (same as original)
-  const buttonsData = [
-    {Title:"Infinite Yield",URL:"https://rawscripts.net/raw/Universal-Script-Infinite-yield-Game-commands-etc-14971"},
-    {Title:"Dex Explorer",URL:"https://rawscripts.net/raw/Universal-Script-Dark-Dex-Explorer-19291"},
-    {Title:"1x1x1x1 Skid",URL:"https://rawscripts.net/raw/Natural-Disaster-Survival-1X1X1X1-GUI-PLS-LIKE-11504"},
-    {Title:"1x1x1x1 Blue",URL:"https://rawscripts.net/raw/Universal-Script-1x1x1x1-blue-gui-21876"},
-    {Title:"c00lgui",URL:"https://raw.githubusercontent.com/MiRw3b/c00lgui-v3rx/main/c00lguiv3rx.lua"},
-    {Title:"Ligma",URL:"https://pastebin.com/raw/MUfsexG1"},
-    {Title:"Project Stigma",URL:"https://rawscripts.net/raw/Universal-Script-Project-stigma-by-my-friend-jointeamck-9367"},
-    {Title:"RC7",URL:"https://pastebin.com/raw/b787QKMQ"},
-    {Title:"Ro Xploit",URL:"https://pastebin.com/raw/0hryQeGw"},
-    {Title:"Trowhack backdoor",URL:"https://raw.githubusercontent.com/TrowHack/scripts/refs/heads/roblox/backdoor.lua"},
-    {Title:"Punpun backdoor",URL:"https://pastefy.app/5I28X4ds/raw"},
-    {Title:"Moon backdoor",URL:"https://raw.githubusercontent.com/G4mg1/main/refs/heads/main/README.md"},
-    {Title:"SF Mobile",URL:"https://raw.githubusercontent.com/g00byd0lanxdd/SF-1.5-MOBILE/refs/heads/main/SF%201.5%20MOBILE"},
-    {Title:"BiPolaria",URL:"https://pastebin.com/raw/8qFWEtWY"},
-    {Title:"Luau X SS v5",URL:"https://rawscripts.net/raw/Universal-Script-Luau-X-SS-V5-rework-50365"},
-    {Title:"SSP",URL:"https://pastefy.app/XHqVeb0d/raw"},
-    {Title:"ExSer",URL:"https://pastefy.app/7sO8ckTL/raw"},
-    {Title:"Project Primalia",URL:"https://rawscripts.net/raw/Universal-Script-Project-Primalia-SS-63706"},
-    {Title:"Venguim",URL:"https://pastefy.app/j3yyullx/raw"},
-    {Title:"KlausGui",URL:"https://pastebin.com/raw/Y0CYLJ6z"},
-    {Title:"Ro Xploit Tiny",URL:"https://raw.githubusercontent.com/Kroostal/Ro-Xploittinyhub/refs/heads/main/RoXploit%20TinyHub"},
-    {Title:"Polaria",URL:"https://pastefy.app/agqEB2qs/raw"},
-    {Title:"Luau X SS v3",URL:"https://raw.githubusercontent.com/gojohdkaisenkt2/Gojohdkaisenkt-/refs/heads/main/L"},
-    {Title:"Broken Spawn",URL:"https://pastebin.com/raw/NyJfL0ey"},
-  ];
+    // Scripts array (same as original)
+    const buttonsData = [
+      {Title:"Infinite Yield",URL:"https://rawscripts.net/raw/Universal-Script-Infinite-yield-Game-commands-etc-14971"},
+      {Title:"Dex Explorer",URL:"https://rawscripts.net/raw/Universal-Script-Dark-Dex-Explorer-19291"},
+      {Title:"1x1x1x1 Skid",URL:"https://rawscripts.net/raw/Natural-Disaster-Survival-1X1X1X1-GUI-PLS-LIKE-11504"},
+      {Title:"1x1x1x1 Blue",URL:"https://rawscripts.net/raw/Universal-Script-1x1x1x1-blue-gui-21876"},
+      {Title:"c00lgui",URL:"https://raw.githubusercontent.com/MiRw3b/c00lgui-v3rx/main/c00lguiv3rx.lua"},
+      {Title:"Ligma",URL:"https://pastebin.com/raw/MUfsexG1"},
+      {Title:"Project Stigma",URL:"https://rawscripts.net/raw/Universal-Script-Project-stigma-by-my-friend-jointeamck-9367"},
+      {Title:"RC7",URL:"https://pastebin.com/raw/b787QKMQ"},
+      {Title:"Ro Xploit",URL:"https://pastebin.com/raw/0hryQeGw"},
+      {Title:"Trowhack backdoor",URL:"https://raw.githubusercontent.com/TrowHack/scripts/refs/heads/roblox/backdoor.lua"},
+      {Title:"Punpun backdoor",URL:"https://pastefy.app/5I28X4ds/raw"},
+      {Title:"Moon backdoor",URL:"https://raw.githubusercontent.com/G4mg1/main/refs/heads/main/README.md"},
+      {Title:"SF Mobile",URL:"https://raw.githubusercontent.com/g00byd0lanxdd/SF-1.5-MOBILE/refs/heads/main/SF%201.5%20MOBILE"},
+      {Title:"BiPolaria",URL:"https://pastebin.com/raw/8qFWEtWY"},
+      {Title:"Luau X SS v5",URL:"https://rawscripts.net/raw/Universal-Script-Luau-X-SS-V5-rework-50365"},
+      {Title:"SSP",URL:"https://pastefy.app/XHqVeb0d/raw"},
+      {Title:"ExSer",URL:"https://pastefy.app/7sO8ckTL/raw"},
+      {Title:"Project Primalia",URL:"https://rawscripts.net/raw/Universal-Script-Project-Primalia-SS-63706"},
+      {Title:"Venguim",URL:"https://pastefy.app/j3yyullx/raw"},
+      {Title:"KlausGui",URL:"https://pastebin.com/raw/Y0CYLJ6z"},
+      {Title:"Ro Xploit Tiny",URL:"https://raw.githubusercontent.com/Kroostal/Ro-Xploittinyhub/refs/heads/main/RoXploit%20TinyHub"},
+      {Title:"Polaria",URL:"https://pastefy.app/agqEB2qs/raw"},
+      {Title:"Luau X SS v3",URL:"https://raw.githubusercontent.com/gojohdkaisenkt2/Gojohdkaisenkt-/refs/heads/main/L"},
+      {Title:"Broken Spawn",URL:"https://pastebin.com/raw/NyJfL0ey"},
+    ];
 
-  let lastSelectedUrl = null;
-  function loaderString(url){ return `loadstring(game:HttpGet("${url}"))()`; }
-
-  // Helper: set output text
-  function setOutput(text){
-    output.textContent = text;
-  }
-
-  // Populate list: try fetch, fallback to loader
-  function buildList(){
-    scriptList.innerHTML = '';
-    buttonsData.forEach(item=>{
-      const btn = document.createElement('button');
-      btn.textContent = item.Title;
-      btn.title = item.URL;
-      btn.addEventListener('click', async () => {
-        lastSelectedUrl = item.URL;
-        setOutput('Fetching: ' + item.Title);
-        try {
-          const resp = await fetch(item.URL, { cache: 'no-store' });
-          if(!resp.ok) throw new Error('HTTP ' + resp.status);
-          const text = await resp.text();
-          scriptArea.value = text;
-          scriptArea.scrollTop = 0;
-          setOutput(`Fetched ${item.Title} (${text.length} bytes) — placed into editor.`);
-        } catch (e) {
-          scriptArea.value = loaderString(item.URL);
-          scriptArea.scrollTop = 0;
-          setOutput('Fetch failed — loader inserted.');
-        }
+    // Populate script list with buttons
+    function populateList() {
+      scriptList.innerHTML = '';
+      buttonsData.forEach(d => {
+        const b = document.createElement('button');
+        b.textContent = d.Title;
+        b.title = d.URL;
+        b.addEventListener('click', async () => {
+          output.textContent = "Exec: " + d.Title;
+          try {
+            output.textContent = "Fetching: " + d.URL;
+            const resp = await fetch(d.URL, { cache: "no-store" });
+            if(!resp.ok) throw new Error("HTTP " + resp.status);
+            const text = await resp.text();
+            scriptArea.value = text;
+            scriptArea.scrollTop = 0; // reset scroll to top of editor
+            output.textContent = `Fetched ${d.Title} (${text.length} bytes) — placed into editor.`;
+          } catch (err) {
+            output.textContent = "Error fetching: " + err;
+          }
+        });
+        scriptList.appendChild(b);
       });
-      scriptList.appendChild(btn);
+    }
+    populateList();
+
+    // Execute: evaluates as JavaScript (warning: unsafe for untrusted code)
+    executeBtn.addEventListener('click', () => {
+      const code = scriptArea.value;
+      output.textContent = "Executing...";
+      try {
+        // IMPORTANT: eval can execute arbitrary JS. Only run trusted code.
+        const result = (function(){ return eval(code); })();
+        output.textContent = "Success: " + (typeof result === 'undefined' ? "(no result)" : String(result));
+      } catch (err) {
+        output.textContent = "Error: " + err;
+      }
     });
-  }
-  buildList();
 
-  // Drag & drop file load (loads file content into editor)
-  app.addEventListener('dragover', e => { e.preventDefault(); });
-  app.addEventListener('drop', e => {
-    e.preventDefault();
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if(!f){ setOutput('No file dropped.'); return; }
-    const r = new FileReader();
-    r.onload = ()=> {
-      scriptArea.value = String(r.result || '');
-      scriptArea.scrollTop = 0;
-      lastSelectedUrl = null;
-      setOutput(`Loaded file: ${f.name}`);
-    };
-    r.onerror = ()=> { setOutput('File read error.'); };
-    r.readAsText(f);
-  });
+    clearBtn.addEventListener('click', () => {
+      scriptArea.value = "";
+      output.textContent = "Cleared.";
+    });
 
-  // Buttons
-  clearBtn.addEventListener('click', ()=> {
-    scriptArea.value = '';
-    lastSelectedUrl = null;
-    setOutput('Cleared.');
-  });
+    fileBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        scriptArea.value = String(reader.result);
+        scriptArea.scrollTop = 0;
+        output.textContent = `Loaded file: ${f.name} (${scriptArea.value.length} bytes)`;
+      };
+      reader.onerror = () => { output.textContent = "File read error."; };
+      reader.readAsText(f);
+      fileInput.value = "";
+    });
 
-  copyBtn.addEventListener('click', async ()=> {
-    try {
-      await navigator.clipboard.writeText(scriptArea.value || '');
-      setOutput('Copied.');
-    } catch (e) {
-      setOutput('Copy failed.');
+    // Tabs: simple UI only; View logs to console
+    tabExec.addEventListener('click', () => {
+      tabExec.classList.add('active');
+      tabView.classList.remove('active');
+      output.textContent = "Executor tab selected.";
+    });
+    tabView.addEventListener('click', () => {
+      tabView.classList.add('active');
+      tabExec.classList.remove('active');
+      output.textContent = "Developer Console Opened.";
+      console.log("[Putigma] Developer Console Opened.");
+    });
+
+    // ensure layout uses full viewport on mobile browsers
+    function ensureFullScreen() {
+      document.documentElement.style.height = window.innerHeight + 'px';
+      document.body.style.height = window.innerHeight + 'px';
     }
-  });
-
-  // Inject: show "กำลัง inject" then back to Ready...
-  injectBtn.addEventListener('click', ()=> {
-    setOutput('กำลัง inject');
-    setTimeout(()=> setOutput('Ready...'), 1500);
-  });
-
-  // Execute evaluates as JS in browser (kept for parity)
-  executeBtn.addEventListener('click', ()=> {
-    const code = scriptArea.value;
-    setOutput('Executing...');
-    try {
-      const result = (function(){ return eval(code); })();
-      setOutput('Success: ' + (typeof result === 'undefined' ? '(no result)' : String(result)));
-    } catch (err) {
-      setOutput('Error: ' + err);
-    }
-  });
-
-  // Ensure full viewport on mobile
-  function fixHeight(){ document.documentElement.style.height = window.innerHeight + 'px'; document.body.style.height = window.innerHeight + 'px'; }
-  window.addEventListener('resize', fixHeight); fixHeight();
-</script>
+    window.addEventListener('resize', ensureFullScreen);
+    ensureFullScreen();
+  </script>
 </body>
 </html>
